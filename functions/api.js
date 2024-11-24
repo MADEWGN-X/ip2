@@ -21,11 +21,11 @@ async function connectToMongo() {
     return ipsCollection;
 }
 
-app.get('/.netlify/functions/api', (req, res) => {
+app.get('/', (req, res) => {
     res.send('/ip');
 });
 
-app.get('/.netlify/functions/api/ip', async (req, res) => {
+app.get('/ip', async (req, res) => {
     try {
         const collection = await connectToMongo();
         const allIps = await collection.find({}).toArray();
@@ -40,7 +40,7 @@ app.get('/.netlify/functions/api/ip', async (req, res) => {
     }
 });
 
-app.post('/.netlify/functions/api/ip', async (req, res) => {
+app.post('/ip', async (req, res) => {
     try {
         const collection = await connectToMongo();
         const { ip, type } = req.body;
