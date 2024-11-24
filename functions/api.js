@@ -1,9 +1,10 @@
-const express = require('express');
 const { MongoClient } = require('mongodb');
-const bodyParser = require('body-parser');
+const express = require('express');
+const serverless = require('serverless-http');
 
 const app = express();
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Konfigurasi MongoDB
 const uri = "mongodb+srv://tokowgn:madewgn@cluster0.xily2.mongodb.net/?retryWrites=true&w=majority";
@@ -12,26 +13,22 @@ let ipsCollection;
 
 // Koneksi ke MongoDB
 async function connectToMongo() {
-    try {
+    if (!ipsCollection) {
         await client.connect();
         const db = client.db('ips_database');
         ipsCollection = db.collection('ips_collection');
-        console.log('Terhubung ke MongoDB');
-    } catch (error) {
-        console.error('Error koneksi MongoDB:', error);
     }
+    return ipsCollection;
 }
-connectToMongo();
 
-// Route utama
-app.get('/', (req, res) => {
+app.get('/.netlify/functions/api', (req, res) => {
     res.send('/ip');
 });
 
-// Route untuk menangani IP
-app.get('/ip', async (req, res) => {
+app.get('/.netlify/functions/api/ip', async (req, res) => {
     try {
-        const allIps = await ipsCollection.find({}).toArray();
+        const collection = await connectToMongo();
+        const allIps = await collection.find({}).toArray();
         let formattedIps = '';
         allIps.forEach(item => {
             formattedIps += `### ${item.name || 'N/A'} ${item.exp || 'N/A'} ${item.ip}\n`;
@@ -43,18 +40,15 @@ app.get('/ip', async (req, res) => {
     }
 });
 
-app.post('/ip', async (req, res) => {
+app.post('/.netlify/functions/api/ip', async (req, res) => {
     try {
+        const collection = await connectToMongo();
         const { ip, type } = req.body;
-        await ipsCollection.insertOne({ ip, type });
+        await collection.insertOne({ ip, type });
         res.send('IP berhasil ditambahkan!');
     } catch (error) {
         res.status(500).send('Error menambahkan IP');
     }
 });
 
-// Menjalankan server
-const PORT = 80;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server berjalan di port ${PORT}`);
-});
+module.exports.handler = serverless(app);
